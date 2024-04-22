@@ -81,7 +81,13 @@ class AccountMutation:
             return LoginError(message="Invalid credentials")
 
         # Generate a JWT (JSON Web Token) containing the user ID as the payload
-        access_token = jwt.encode({"userId": user.id}, key=os.environ["SECRET_KEY"])
+        access_token = jwt.encode(
+            {
+                "userId": user.id,
+                "exp": datetime.now() + timedelta(days=1),
+            },
+            key=os.environ["SECRET_KEY"],
+        )
 
         # Return a success response with user details (limited data using AccountType) and the access token
         return LoginSuccess(
