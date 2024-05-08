@@ -6,6 +6,7 @@ from django.contrib.auth.models import (
 from django.core.mail import send_mail
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from phonenumber_field.modelfields import PhoneNumberField
 
 
 class CustomAccountManager(BaseUserManager):
@@ -45,6 +46,7 @@ class Account(AbstractBaseUser, PermissionsMixin):
     account_type = models.CharField(
         _("Account Type"), choices=ACCOUNT_TYPES, default="CUSTOMER"
     )
+    phone_number = PhoneNumberField(blank=True, region="TR")
 
     # Account Status
     is_active = models.BooleanField(default=False)
@@ -68,4 +70,25 @@ class Account(AbstractBaseUser, PermissionsMixin):
         )
 
     def __str__(self) -> str:
-        return self.first_name + " " + self.last_name
+        return self.email
+
+
+class Address(models.Model):
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="account_address"
+    )
+    neighborhood = models.CharField(_("Neighborhood"), max_length=255)
+    street = models.CharField(_("Street"), max_length=50)
+    building_number = models.CharField(_("Building Number"), max_length=50)
+    zip_code = models.CharField(_("Zip Code"), max_length=5)
+    district = models.CharField(_("District"), max_length=50)
+    city = models.CharField(_("City"), max_length=50)
+    address_detail = models.TextField(_("Address Detail"), blank=True, null=True)
+    is_default = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = _("Address")
+        verbose_name_plural = _("Addresses")
+
+    def __str__(self) -> str:
+        return f"{self.account.first_name} {self.account.last_name}'s Address"

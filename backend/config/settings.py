@@ -30,8 +30,12 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # External Apps
     "strawberry.django",
+    "phonenumber_field",
     # Load Apps
-    "apps.accounts.apps.AccountsConfig",
+    "apps.accounts",
+    "apps.businesses",
+    "apps.products",
+    "apps.orders",
 ]
 
 MIDDLEWARE = [
@@ -103,7 +107,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Istanbul"
 
 USE_I18N = True
 
@@ -112,7 +116,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+# STATIC_ROOT = os.path.join(BASE_DIR, "static")
+STATICFILES_DIRS = (os.path.join(BASE_DIR, "static"),)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -126,3 +132,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "hasanocaltest@gmail.com"
 EMAIL_HOST_PASSWORD = os.environ["EMAIL_PASSWORD"]
+
+# Media Files
+MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
+MEDIA_URL = "/media/"
