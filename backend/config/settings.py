@@ -30,9 +30,12 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # External Apps
     "strawberry.django",
+    "phonenumber_field",
     # Load Apps
-    "apps.accounts.apps.AccountsConfig",
-    "apps.businesses.apps.BusinessesConfig",
+    "apps.accounts",
+    "apps.businesses",
+    "apps.products",
+    "apps.orders",
 ]
 
 MIDDLEWARE = [
@@ -104,7 +107,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Istanbul"
 
 USE_I18N = True
 
