@@ -8,14 +8,21 @@ import jwt
 
 # GraphQL-related imports
 import strawberry
+import strawberry.django
 
 # Custom account model and types (assuming they're in 'apps.accounts')
-from apps.accounts.models import Account
+from apps.accounts.models import Account, Address
 
 # Custom GraphQL union types for login/registration/password reset results
+from apps.accounts.permissions import IsAuthenticated, IsCustomer
+from apps.accounts.services import resolve_token
 from apps.accounts.types import (
     AccountInput,
+    AccountPartialInput,
     AccountType,
+    AddressError,
+    AddressInput,
+    AddressSuccess,
     ForgotPasswordError,
     ForgotPasswordSuccess,
     LoginError,
@@ -24,6 +31,8 @@ from apps.accounts.types import (
     RegisterAccountSuccess,
     ResetPasswordError,
     ResetPasswordSuccess,
+    UpdateAccountError,
+    UpdateAccountSuccess,
 )
 
 # Django-specific imports
@@ -48,6 +57,16 @@ ForgotPasswordResult = Annotated[
 ResetPasswordResult = Annotated[
     Union[ResetPasswordSuccess, ResetPasswordError],
     strawberry.union("ResetPasswordResult"),
+]
+
+AddressResult = Annotated[
+    Union[AddressSuccess, AddressError],
+    strawberry.union("AddressResult"),
+]
+
+UpdateAccountResult = Annotated[
+    Union[UpdateAccountSuccess, UpdateAccountError],
+    strawberry.union("UpdateAccountResult"),
 ]
 
 
@@ -92,7 +111,10 @@ class AccountMutation:
         # Return a success response with user details (limited data using AccountType) and the access token
         return LoginSuccess(
             user=AccountType(
-                id=user.id, first_name=user.first_name, last_name=user.last_name
+                id=user.id,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                phone_number=user.phone_number,
             ),
             token=access_token,
         )
@@ -201,44 +223,61 @@ class AccountMutation:
     def reset_password(
         self, token: str, password: str, confirm_password: str
     ) -> ResetPasswordResult:
-        """
-        Function to allow users to reset their password using a provided reset token.
-
-        Args:
-            token (str): The JWT token received through the password reset email.
-            password (str): The new password the user wants to set.
-            confirm_password (str): Confirmation of the new password (ensures user entered it correctly).
-
-        Returns:
-            ResetPasswordResult: An object indicating the outcome of the password reset attempt (success, error).
-        """
         try:
-            # Decode the JWT token received in the password reset email
             decodedToken = jwt.decode(
                 jwt=token, key=os.environ["SECRET_KEY"], algorithms=["HS256"]
             )
 
-            # Retrieve the user object associated with the user ID stored in the token
             user = Account.objects.get(pk=decodedToken["userId"])
 
-            # Check if the user was found based on the token
             if user is None:
-                # If the user is not found or the token has expired (user might not exist anymore), raise an error
                 raise ValueError("User not found or Link Expired")
 
-            # Ensure the entered passwords match
             if password != confirm_password:
                 raise ValueError("The passwords do not match")
 
-            # Set the new password for the user securely using the 'set_password' method
             user.set_password(password)
 
-            # Save the updated user object with the new password
             user.save()
 
-            # If the password reset was successful, return a success response
             return ResetPasswordSuccess(success=True)
 
         except Exception as e:
-            # Catch any exceptions that might occur during the process
             return ResetPasswordError(message=str(e))
+
+    @strawberry.django.mutation(permission_classes=[IsAuthenticated, IsCustomer])
+    def create_address(
+        self, info: strawberry.Info, payload: AddressInput
+    ) -> AddressResult:
+        try:
+            authorization = info.context.request.headers["Authorization"]
+            user = resolve_token(authorization=authorization)
+            account_address = Address.objects.create(
+                account=user,
+                neighborhood=payload.neighborhood,
+                street=payload.street,
+                building_number=payload.building_number,
+                zip_code=payload.zip_code,
+                district=payload.district,
+                city=payload.city,
+                address_detail=payload.address_detail,
+            )
+            return AddressSuccess(address=account_address, success=True)
+        except Exception as e:
+            return AddressError(message=str(e))
+
+    @strawberry.field(permission_classes=[IsAuthenticated, IsCustomer])
+    def update_account_info(
+        self, info: strawberry.Info, payload: AccountPartialInput
+    ) -> UpdateAccountResult:
+        try:
+            authorization = info.context.request.headers["Authorization"]
+            user = resolve_token(authorization=authorization)
+            updated_user = Account.objects.filter(pk=user.id).update(
+                first_name=payload.first_name,
+                last_name=payload.last_name,
+                phone_number=payload.phone_number,
+            )
+            return UpdateAccountSuccess(id=updated_user, success=True)
+        except Exception as e:
+            return UpdateAccountError(message=str(e))
